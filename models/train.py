@@ -1,32 +1,83 @@
-from transformers import AdamW
-from torch.utils.data import DataLoader, Dataset
-from transformers import BertTokenizer, BertForSequenceClassification
+import os
+from datasets import Dataset
+from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 import torch
 
-class PIITextDataset(Dataset):
-    def __init__(self, texts, labels, tokenizer, max_length=512):
-        self.texts = texts
-        self.labels = labels
-        self.tokenizer = tokenizer
-        self.max_length = max_length
+class ModelTrainer:
+    def __init__(self, base_dir, preprocessed_data_path, model_save_path, model_name="bert-base-uncased", num_labels=2):
+        self.BASE_DIR = base_dir
+        self.PREPROCESSED_DATA_PATH = preprocessed_data_path
+        self.MODEL_SAVE_PATH = model_save_path
+        self.MODEL_NAME = model_name
+        self.NUM_LABELS = num_labels
 
-    def __len__(self):
-        return len(self.texts)
+        self.model = BertForSequenceClassification.from_pretrained(self.MODEL_NAME, num_labels=self.NUM_LABELS)
+        self.tokenizer = BertTokenizer.from_pretrained(self.MODEL_NAME)
 
-    def __getitem__(self, idx):
-        text = self.texts[idx]
-        label = self.labels[idx]
-        tokens = self.tokenizer(text, return_tensors="pt", padding="max_length", 
-                                truncation=True, max_length=self.max_length)
-        return {
-            "input_ids": tokens["input_ids"].squeeze(),
-            "attention_mask": tokens["attention_mask"].squeeze(),
-            "label": torch.tensor(label, dtype=torch.long)
-        }
+        self.dataset = self.load_dataset()
+        self.train_dataset = None
+        self.eval_dataset = None
 
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=2)
-optimizer = AdamW(model.parameters(), lr=5e-5)
+    def load_dataset(self):
+        print(f"{self.PREPROCESSED_DATA_PATH}")
+        dataset_path = os.path.join(self.PREPROCESSED_DATA_PATH)
+        dataset = Dataset.load_from_disk(dataset_path)
+        print("Successfully load dataset")
+        return dataset
+
+    def tokenize_data(self):
+        def tokenize_function(examples):
+            return self.tokenizer(examples["text"], padding="max_length", truncation=True)
+        
+        tokenized_datasets = self.dataset.map(tokenize_function, batched=True)
+        self.train_dataset, self.eval_dataset = tokenized_datasets.train_test_split(test_size=0.2, seed=42).values()
+
+    def set_training_args(self):
+        # 하이퍼파라미터 설정
+        return  TrainingArguments(
+                    output_dir=os.path.join(self.BASE_DIR, "results"),    
+                    num_train_epochs=3,                                   
+                    per_device_train_batch_size=16,                       
+                    per_device_eval_batch_size=64,                       
+                    warmup_steps=500,                                     
+                    weight_decay=0.01,                                    
+                    logging_dir=os.path.join(self.BASE_DIR, "models", "basemodel", "version_0", "logs"),      
+                    logging_steps=10,
+                    evaluation_strategy="epoch",                          
+                )
+
+    def train(self):
+        self.tokenize_data()
+
+        training_args = self.set_training_args()
+
+        trainer = Trainer(
+            model=self.model,                                  
+            args=training_args,                                
+            train_dataset=self.train_dataset,                  
+            eval_dataset=self.eval_dataset,                   
+        )
+
+        # 모델 훈련
+        trainer.train()
+
+# 모델 저장
+    def save_model(self):
+        os.makedirs(self.MODEL_SAVE_PATH, exist_ok=True)
+        self.model.save_pretrained(self.MODEL_SAVE_PATH)
+        self.tokenizer.save_pretrained(self.MODEL_SAVE_PATH)
+        print(f"Succesfully saved model and tokenizer in {self.MODEL_SAVE_PATH}")
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PREPROCESSED_DATA_PATH = os.path.join(BASE_DIR, "data", "preprocessed", "preprocessed_pii_data.arrow")
+MODEL_SAVE_PATH = os.path.join(BASE_DIR, 'models', 'basemodel', 'version_0')
+
+trainer = ModelTrainer(BASE_DIR, PREPROCESSED_DATA_PATH, MODEL_SAVE_PATH)
+trainer.train()
+trainer.save_model( )
 
 
-#...need to implement
+
+
+
+
