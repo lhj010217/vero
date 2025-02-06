@@ -1,5 +1,7 @@
 import os
+import numpy as np
 from datasets import Dataset
+from evaluate import load as load_metric
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 import torch
 
@@ -33,10 +35,10 @@ class ModelTrainer:
         self.train_dataset, self.eval_dataset = tokenized_datasets.train_test_split(test_size=0.2, seed=42).values()
 
     def set_training_args(self):
-        # 하이퍼파라미터 설정
+        # trainer 하이퍼파라미터 설정
         return  TrainingArguments(
                     output_dir=os.path.join(self.BASE_DIR, "results"),    
-                    num_train_epochs=3,                                   
+                    num_train_epochs=5,                                   
                     per_device_train_batch_size=16,                       
                     per_device_eval_batch_size=64,                       
                     warmup_steps=500,                                     
@@ -45,6 +47,27 @@ class ModelTrainer:
                     logging_steps=10,
                     evaluation_strategy="epoch",                          
                 )
+    
+    def compute_metrics(self, eval_pred):
+        metric_acc = load_metric("accuracy")
+        metric_prec = load_metric("precision")
+        metric_rec = load_metric("recall")
+        metric_f1 = load_metric("f1")
+
+        logits, labels = eval_pred
+        predictions = np.argmax(logits, axis=-1)
+
+        acc = metric_acc.compute(predictions=predictions, references=labels)
+        prec = metric_prec.compute(predictions=predictions, references=labels, average="binary")
+        rec = metric_rec.compute(predictions=predictions, references=labels, average="binary")
+        f1 = metric_f1.compute(predictions=predictions, references=labels, average="binary")
+
+        return {
+            "accuracy": acc["accuracy"],
+            "precision": prec["precision"],
+            "recall": rec["recall"],
+            "f1-score": f1["f1"]
+        }
 
     def train(self):
         self.tokenize_data()
@@ -52,10 +75,11 @@ class ModelTrainer:
         training_args = self.set_training_args()
 
         trainer = Trainer(
-            model=self.model,                                  
-            args=training_args,                                
-            train_dataset=self.train_dataset,                  
-            eval_dataset=self.eval_dataset,                   
+            model=self.model,
+            args=training_args,
+            train_dataset=self.train_dataset,
+            eval_dataset=self.eval_dataset,
+            compute_metrics=self.compute_metrics  
         )
 
         # 모델 훈련
