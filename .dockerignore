@@ -1,0 +1,25 @@
+# Python 가상환경 및 빌드 파일 제거
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git 관련 파일 제거
+.git/
+.gitignore
+.github/
+
+# 로그 파일 및 캐시 파일 제거
+*.log
+logs/
+tmp/
+cache/
+.DS_Store
+
+# Docker 빌드 과정에서 불필요한 파일 제거
+node_modules/
+.env
+
+# 데이터파일 제거
+data/

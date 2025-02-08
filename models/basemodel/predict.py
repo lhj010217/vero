@@ -31,10 +31,10 @@ class ModelPredictor:
         }
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR,'basemodel', 'version_0')
+MODEL_PATH = os.path.join(BASE_DIR,'basemodel', 'version_0.1')
 
 predictor = ModelPredictor(MODEL_PATH)
-test_text = "hello world."
+test_text = "the weather is nice today"
 
 result = predictor.predict(test_text)
 
