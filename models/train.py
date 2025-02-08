@@ -5,6 +5,7 @@ from evaluate import load as load_metric
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 import torch
 
+MODEL_VERSION = "version_0.1"
 class ModelTrainer:
     def __init__(self, base_dir, preprocessed_data_path, model_save_path, model_name="bert-base-uncased", num_labels=2):
         self.BASE_DIR = base_dir
@@ -29,7 +30,7 @@ class ModelTrainer:
 
     def tokenize_data(self):
         def tokenize_function(examples):
-            return self.tokenizer(examples["text"], padding="max_length", truncation=True)
+            return self.tokenizer(examples["text"], padding="max_length", truncation=True, max_length=297)
         
         tokenized_datasets = self.dataset.map(tokenize_function, batched=True)
         self.train_dataset, self.eval_dataset = tokenized_datasets.train_test_split(test_size=0.2, seed=42).values()
@@ -37,13 +38,14 @@ class ModelTrainer:
     def set_training_args(self):
         # trainer 하이퍼파라미터 설정
         return  TrainingArguments(
+                    save_strategy="no",
                     output_dir=os.path.join(self.BASE_DIR, "results"),    
-                    num_train_epochs=5,                                   
+                    num_train_epochs=2,                                   
                     per_device_train_batch_size=16,                       
                     per_device_eval_batch_size=64,                       
                     warmup_steps=500,                                     
                     weight_decay=0.01,                                    
-                    logging_dir=os.path.join(self.BASE_DIR, "models", "basemodel", "version_0", "logs"),      
+                    logging_dir=os.path.join(self.BASE_DIR, "models", "basemodel", MODEL_VERSION, "logs"),      
                     logging_steps=10,
                     evaluation_strategy="epoch",                          
                 )
@@ -94,14 +96,8 @@ class ModelTrainer:
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREPROCESSED_DATA_PATH = os.path.join(BASE_DIR, "data", "preprocessed", "preprocessed_pii_data.arrow")
-MODEL_SAVE_PATH = os.path.join(BASE_DIR, 'models', 'basemodel', 'version_0')
+MODEL_SAVE_PATH = os.path.join(BASE_DIR, 'models', 'basemodel', MODEL_VERSION)
 
 trainer = ModelTrainer(BASE_DIR, PREPROCESSED_DATA_PATH, MODEL_SAVE_PATH)
 trainer.train()
 trainer.save_model( )
-
-
-
-
-
-

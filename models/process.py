@@ -27,7 +27,8 @@ class DataPreprocessor:
 
             # 전처리
             df = df.fillna("") 
-            df["labels"] = df["labels"].apply(lambda x: 1 if "PII" in x else 0)
+            # '0' 외의 다른 값은 모두 1로 설정
+            df["labels"] = df["labels"].apply(lambda x: 1 if x != '0' else 0)
             df["email"] = df["email"].apply(lambda x: self.extract_email(x))
             df["phone"] = df["phone"].apply(lambda x: self.extract_phone(x)) 
             df["username"] = df["username"].apply(lambda x: self.extract_username(x)) 
