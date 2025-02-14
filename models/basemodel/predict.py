@@ -31,6 +31,8 @@ class ModelPredictor:
         }
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR,'basemodel', 'version_0.1')
+MODEL_PATH = os.path.join(BASE_DIR,'basemodel', 'version_0.2')
 
 predictor = ModelPredictor(MODEL_PATH)
+result = predictor.predict("my address is 1234 Main Street")
+print(result)

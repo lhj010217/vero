@@ -5,7 +5,7 @@ from evaluate import load as load_metric
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 import torch
 
-MODEL_VERSION = "version_0.1"
+MODEL_VERSION = "version_0.2"
 class ModelTrainer:
     def __init__(self, base_dir, preprocessed_data_path, model_save_path, model_name="bert-base-uncased", num_labels=2):
         self.BASE_DIR = base_dir
