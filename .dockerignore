@@ -8,7 +8,9 @@ __pycache__/
 # Git 관련 파일 제거
 .git/
 .gitignore
+.gitattributes
 .github/
+README.md
 
 # 로그 파일 및 캐시 파일 제거
 *.log
@@ -23,3 +25,8 @@ node_modules/
 
 # 데이터파일 제거
 data/
+
+# .tar파일 제거
+*.tar
+
+

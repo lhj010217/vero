@@ -34,5 +34,5 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH = os.path.join(BASE_DIR,'basemodel', 'version_0.2')
 
 predictor = ModelPredictor(MODEL_PATH)
-result = predictor.predict("제 이름은 이형준이고, 전화번호는 010-1413-1384입니다. 집 주소는 경기도남양주시와부읍입니다.")
+result = predictor.predict("")
 print(result)
