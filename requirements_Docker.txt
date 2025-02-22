@@ -1,4 +1,4 @@
-absl-py==2.1.0
+﻿absl-py==2.1.0
 accelerate==1.3.0
 aiohappyeyeballs==2.4.4
 aiohttp==3.11.11
@@ -42,6 +42,9 @@ fqdn==1.5.1
 frozenlist==1.5.0
 fsspec==2024.9.0
 gast==0.4.0
+google-auth==2.37.0
+google-auth-oauthlib==0.4.6
+google-pasta==0.2.0
 grpcio==1.69.0
 h11==0.14.0
 h5py==3.12.1
@@ -75,8 +78,10 @@ nbconvert==7.16.5
 nbformat==5.10.4
 nest-asyncio==1.6.0
 networkx==3.2.1
+nltk==3.8.1
 numpy==1.23.0
 oauthlib==3.2.2
+opacus==1.5.3
 opt_einsum==3.4.0
 overrides==7.7.0
 packaging==24.2
@@ -104,6 +109,7 @@ pytest==8.3.4
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-json-logger==3.2.1
+python-multipart==0.0.20
 pytz==2024.2
 PyYAML==6.0.2
 pyzmq==26.2.0
@@ -117,6 +123,7 @@ rpds-py==0.22.3
 rsa==4.9
 safetensors==0.5.2
 scikit-learn==1.6.1
+scipy==1.13.1
 Send2Trash==1.8.3
 six==1.17.0
 sniffio==1.3.1
@@ -126,6 +133,11 @@ starlette==0.45.3
 sympy==1.13.1
 tbb==2022.0.0
 tcmlib==1.2.0
+tensorboard==2.10.1
+tensorboard-data-server==0.6.1
+tensorboard-plugin-wit==1.8.1
+tensorflow==2.10.0
+tensorflow-estimator==2.10.0
 termcolor==2.5.0
 terminado==0.18.1
 threadpoolctl==3.5.0

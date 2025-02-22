@@ -20,9 +20,9 @@ class ModelTrainer:
         self.model = BertForSequenceClassification.from_pretrained(self.MODEL_NAME, num_labels=self.NUM_LABELS)
         self.tokenizer = BertTokenizer.from_pretrained(self.MODEL_NAME)
 
-        self.pii_dataset = self.load_dataset(self.PII_DATA_PATH)
-        self.instruction_dataset = self.load_instruction_data()
-        self.dataset = self.merge_datasets()
+        self.pii_dataset = None
+        self.instruction_dataset = None
+        self.dataset =  None
 
         self.train_dataset = None
         self.eval_dataset = None
@@ -75,10 +75,20 @@ class ModelTrainer:
         self.train_dataset, self.eval_dataset = tokenized_datasets.train_test_split(test_size=0.2, seed=42).values()
 
     def set_training_args(self):
+    # 데이터셋 크기에 따른 epoch 수 계산
+        dataset_size = len(self.dataset)
+        
+        if dataset_size < 1000:
+            num_train_epochs = 5  # 작은 데이터셋은 더 많은 epoch
+        elif dataset_size < 5000:
+            num_train_epochs = 3  # 중간 크기 데이터셋
+        else:
+            num_train_epochs = 1  # 큰 데이터셋은 적은 epoch
+        
         return TrainingArguments(
             save_strategy="no",
             output_dir=os.path.join(self.BASE_DIR, "results"),
-            num_train_epochs=0.7,
+            num_train_epochs=num_train_epochs,  # 동적으로 설정된 epoch 사용
             per_device_train_batch_size=16,
             per_device_eval_batch_size=64,
             warmup_steps=500,
@@ -134,12 +144,9 @@ class ModelTrainer:
         print(f"\n Model saved at: {self.MODEL_SAVE_PATH}")
 
 
-
+'''
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PII_DATA_PATH = os.path.join(BASE_DIR, "data", "base_dataset", "base.csv")
 INSTRUCTION_DATA_PATH = os.path.join(BASE_DIR, "data", "preprocessed", "instructions.csv")
 MODEL_SAVE_PATH = os.path.join(BASE_DIR, "models", "basemodel", MODEL_VERSION)
-
-trainer_instance = ModelTrainer(BASE_DIR, PII_DATA_PATH, INSTRUCTION_DATA_PATH, MODEL_SAVE_PATH)
-trainer_instance.train()
-trainer_instance.save_model()
+'''

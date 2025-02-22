@@ -32,6 +32,10 @@ class InstructionDataProcessor:
             raise ValueError("DataFrame이 생성되지 않았습니다. 먼저 process_data()를 호출하세요.")
         return self.df
     
+    def load_csv(self, csv_path: str):
+        """CSV 파일을 로드해서 DataFrame 저장"""
+        self.df = pd.read_csv(csv_path, encoding='utf-8-sig')
+        
 processor = InstructionDataProcessor('raw/alpaca_data.json')
 processor.load_json()
 processor.process_data()

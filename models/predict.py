@@ -3,11 +3,18 @@ import torch
 import numpy as np
 from transformers import BertTokenizer, BertForSequenceClassification
 
-class BaseModelPredictor:
-    def __init__(self, model_path):
-        self.MODEL_PATH = model_path
-        self.MODEL_NAME = model_path
+class ModelPredictor:
+    def __init__(self, company_name=None):
+        # BASE_DIR 설정
+        self.BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+        # MODEL_PATH 설정: company_name이 주어지면 해당 경로, 아니면 기본 경로로 설정
+        if company_name:
+            self.MODEL_PATH = os.path.join(self.BASE_DIR, 'models', company_name)
+        else:
+            self.MODEL_PATH = os.path.join(self.BASE_DIR, 'models', 'basemodel', 'version_0.3')
+
+        # 모델 로드
         self.tokenizer = BertTokenizer.from_pretrained(self.MODEL_PATH)
         self.model = BertForSequenceClassification.from_pretrained(self.MODEL_PATH)
 
@@ -29,8 +36,3 @@ class BaseModelPredictor:
             "probabilities": probabilities.numpy(),
             "predicted_class": predicted_class
         }
-    
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR,'basemodel', 'version_0.2')
-
-predictor = BaseModelPredictor(MODEL_PATH)

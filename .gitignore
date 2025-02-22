@@ -180,3 +180,5 @@ cache-*.arrow
 
 #ignore model files
 models/basemodel/
+
+results/

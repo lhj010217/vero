@@ -29,4 +29,11 @@ data/
 # .tar파일 제거
 *.tar
 
-
+# 기타등등
+data/base_dataset
+data/raw/
+data/samples/
+models/basemodel/version_0
+models/basemodel/version_0.1
+models/basemodel/version_0.2
+result/

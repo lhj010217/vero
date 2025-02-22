@@ -1,29 +1,33 @@
 import os
 import importlib.util
-from fastapi import FastAPI
-from fastapi.routing import APIRouter
+from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from api.management_companyAPI import router as create_company_router, load_all_company_routes
+from models.predict import ModelPredictor
 
+app = FastAPI(title="Company API Generator")
 
-app = FastAPI(title="Prompt Filtering API")
-endpoints_dir = os.path.join(os.path.dirname(__file__), "endpoints")
+BASE_DIR = os.path.dirname(__file__)
+ENDPOINTS_DIR = os.path.join(BASE_DIR, "endpoints")
 
-for filename in os.listdir(endpoints_dir):
-    if filename.endswith(".py") and filename != "__init__.py":
-
-        module_name = f"api.endpoints.{filename[:-3]}"  
-        module_spec = importlib.util.find_spec(module_name)
-
-        if module_spec is not None:
-            module = importlib.import_module(module_name)
-            if hasattr(module, "router"):
-                app.include_router(module.router, prefix="/api")
-
+app.include_router(create_company_router)
+load_all_company_routes(app)
 
 @app.get("/")
 def read_root():
     return {"message": "Prompt Filtering API is running"}
 
+predictor = ModelPredictor()
+class PromptRequest(BaseModel):
+    prompt: str
+
+@app.post("/predict")
+def filter_prompt(request: PromptRequest):
+    result = predictor.predict(request.prompt)
+    if result["predicted_class"] == 1: 
+        raise HTTPException(status_code=400, detail="This prompt is not allowed.")
+    return {"filtered_prompt": request.prompt}
 
 app.add_middleware(
     CORSMiddleware,
