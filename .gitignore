@@ -177,3 +177,6 @@ cache-*.arrow
 
 #ignore docker files
 *.tar
+
+#ignore model files
+models/basemodel/
