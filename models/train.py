@@ -82,13 +82,12 @@ class ModelTrainer:
                 truncation=True,
                 max_length=297
             )
-            # 라벨이 중첩 리스트가 아니도록 처리
             tokenized_inputs["labels"] = examples["labels"]
             return tokenized_inputs
         
         print("Tokenizing dataset...")
         tokenized_datasets = self.dataset.map(tokenize_function, batched=True, remove_columns=["text"])
-        # 학습/평가 데이터셋으로 분리
+
         split_datasets = tokenized_datasets.train_test_split(test_size=0.2, seed=42)
         self.train_dataset = split_datasets["train"]
         self.eval_dataset = split_datasets["test"]
@@ -128,19 +127,16 @@ class ModelTrainer:
         return {"accuracy": acc, "precision": prec, "recall": rec, "f1-score": f1}
 
     def train(self):
-        # 데이터 tokenize 및 분할
         self.tokenize_data()
         training_args = self.set_training_args()
         self.train_dataset.set_format(type="torch")
         self.model.train()
-        # 학습 가능한 파라미터만 업데이트하도록 optimizer 설정
+
         optimizer = AdamW(filter(lambda p: p.requires_grad, self.model.parameters()), lr=5e-5)
 
-        # DP에 적합한 큰 배치 사이즈 사용 (여기서는 train_dataset 사용)
-        dp_batch_size = 512
+        dp_batch_size = 128
         train_dataloader = DataLoader(self.train_dataset, batch_size=dp_batch_size, shuffle=True)
 
-        # PrivacyEngine 설정 (ghost clipping 옵션이 True이면 grad_sample_mode 추가)
         privacy_engine = PrivacyEngine()
         dp_engine_kwargs = {
             "module": self.model,
@@ -154,14 +150,11 @@ class ModelTrainer:
         if self.use_ghost_clipping:
             dp_engine_kwargs["grad_sample_mode"] = "ghost"
 
-        # DP용으로 wrapping (이 과정에서 optimizer, dataloader, model이 DP로 변환됨)
         self.model, optimizer, train_dataloader = privacy_engine.make_private_with_epsilon(**dp_engine_kwargs)
         for epoch in range(training_args.num_train_epochs):
             print(f"Epoch {epoch+1}/{training_args.num_train_epochs}")
             epoch_loss = 0.0
             for batch in tqdm(train_dataloader, desc=f"Epoch {epoch+1}"):
-                # 입력 배치 처리 (Trainer를 사용하지 않으므로, 직접 모델의 forward를 호출)
-                # 배치 데이터가 dictionary 형식이라고 가정 (예: {"input_ids": ..., "attention_mask": ..., "labels": ...})
                 outputs = self.model(
                     input_ids=batch["input_ids"],
                     attention_mask=batch["attention_mask"],
@@ -169,7 +162,6 @@ class ModelTrainer:
                 )
                 loss = outputs.loss
 
-                # 여기서 반드시 매 batch마다 optimizer.zero_grad(), loss.backward(), optimizer.step()를 호출합니다.
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
