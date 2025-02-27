@@ -1,24 +1,33 @@
 import pandas as pd
 import nltk
-nltk.download('punkt')
 from nltk.tokenize import sent_tokenize
+nltk.download('punkt')
 
-df = pd.read_csv("raw/pii_dataset.csv")
+input_file = "raw/pii_dataset.csv"
+output_file = "base_dataset/base.csv"
 
-prompts = df["prompt"].tolist()
+df = pd.read_csv(input_file)
 
 sentences = []
 labels = []
 
-sensitive_keywords = ["name", "phone", "address", "url"]
-
-for prompt in prompts:
-    sents = sent_tokenize(prompt)
-    for sent in sents:
-        sent_lower = sent.lower()
-        label = 1 if any(keyword in sent_lower for keyword in sensitive_keywords) else 0
+for _, row in df.iterrows():
+    prompt = row["text"]
+    
+    name = str(row.get("name", "")).strip()
+    phone = str(row.get("phone", "")).strip()
+    address = str(row.get("address", "")).strip()
+    url = str(row.get("url", "")).strip()
+    
+    pii_values = [name, phone, address, url]
+    pii_values = [value for value in pii_values if value] 
+    
+    for sent in sent_tokenize(prompt):
+        sent_clean = sent.strip()
         
-        sentences.append(sent.strip())
+        label = 1 if any(value in sent_clean for value in pii_values) else 0
+        
+        sentences.append(sent_clean)
         labels.append(label)
 
 finetune_df = pd.DataFrame({
@@ -26,7 +35,7 @@ finetune_df = pd.DataFrame({
     "label": labels
 })
 
-#print("Label Distribution:")
-#print(finetune_df['label'].value_counts())
+finetune_df.to_csv(output_file, index=False)
 
-finetune_df.to_csv("base_dataset/base.csv", index=False)
+print("Label Distribution:")
+print(finetune_df['label'].value_counts())
