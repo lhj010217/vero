@@ -1,4 +1,5 @@
 import os
+import random
 import numpy as np
 import pandas as pd
 from datasets import Dataset
@@ -9,8 +10,10 @@ from evaluate import load
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from opacus.grad_sample import GradSampleModule
+import nlpaug.augmenter.word as naw
+import nlpaug.augmenter.char as nac
 
-MODEL_VERSION = "version_0.4"
+MODEL_VERSION = "version_0.5"
 
 class ModelTrainer:
     def __init__(self, base_dir, pii_data_path, instruction_data_path, model_save_path, 
@@ -23,11 +26,9 @@ class ModelTrainer:
         self.NUM_LABELS = num_labels
         self.use_ghost_clipping = use_ghost_clipping
 
-        # 모델과 토크나이저 로드
         self.model = BertForSequenceClassification.from_pretrained(self.MODEL_NAME, num_labels=self.NUM_LABELS)
         self.tokenizer = BertTokenizer.from_pretrained(self.MODEL_NAME)
 
-        # 튜토리얼에 따라, BERT 전체 파라미터를 freeze하고 마지막 인코더 레이어, pooler, classifier만 학습하도록 설정
         for param in self.model.bert.parameters():
             param.requires_grad = False
         for param in self.model.bert.encoder.layer[-1].parameters():
@@ -47,7 +48,6 @@ class ModelTrainer:
     def load_dataset(self, path):
         print(f"Loading dataset from: {path}")
         df = pd.read_csv(path)
-        df = df.rename(columns={"sentence": "text", "label": "labels"})
         df = df[df["labels"] == 1]
 
         dataset = Dataset.from_pandas(df)
@@ -57,7 +57,6 @@ class ModelTrainer:
     def load_instruction_data(self):
         print(f"Loading instruction data from: {self.INSTRUCTION_DATA_PATH}")
         df = pd.read_csv(self.INSTRUCTION_DATA_PATH)
-        df = df.rename(columns={"instruction": "text", "label": "labels"})
 
         pii_size = len(self.pii_dataset)
         sampled_df = df.sample(n=pii_size, random_state=42)
@@ -93,9 +92,73 @@ class ModelTrainer:
         self.eval_dataset = split_datasets["test"]
         print(f"Train size: {len(self.train_dataset)}, Eval size: {len(self.eval_dataset)}")
 
+    def augment_sentence(self, sentence, n):
+        """문장 데이터 증강 함수"""
+        augmented = []
+        n_synonym = int(n * 0.7)  # 70%는 동의어 치환
+        n_delete = int(n * 0.1)   # 10%는 단어 삭제
+        n_swap = int(n * 0.1)     # 10%는 단어 교환
+        n_keyboard = n - (n_synonym + n_delete + n_swap)  # 남은 개수 (약 10%)는 키보드 오타
+        
+        # 동의어 치환: aug_p를 매번 랜덤하게 (0.0~1.0) 부여
+        for _ in range(n_synonym):
+            random_aug_p = random.uniform(0.0, 1.0)
+            aug = naw.SynonymAug(aug_p=random_aug_p)
+            aug_sent = aug.augment(sentence)
+            augmented.append(aug_sent[0] if isinstance(aug_sent, list) else aug_sent)
+        
+        # 단어 삭제 (aug_p = 0.1)
+        aug_del = naw.RandomWordAug(action="delete", aug_p=0.1)
+        for _ in range(n_delete):
+            aug_sent = aug_del.augment(sentence)
+            augmented.append(aug_sent[0] if isinstance(aug_sent, list) else aug_sent)
+        
+        # 단어 교환 (swap) (aug_p = 0.1)
+        aug_swap = naw.RandomWordAug(action="swap", aug_p=0.1)
+        for _ in range(n_swap):
+            aug_sent = aug_swap.augment(sentence)
+            augmented.append(aug_sent[0] if isinstance(aug_sent, list) else aug_sent)
+        
+        # 타이포그래피 변형 (KeyboardAug)
+        aug_key = nac.KeyboardAug()
+        for _ in range(n_keyboard):
+            aug_sent = aug_key.augment(sentence)
+            augmented.append(aug_sent[0] if isinstance(aug_sent, list) else aug_sent)
+        
+        return augmented
+    
+    def augment_dataset(self, dataset, augment_factor=20):
+        print(f"Augmenting dataset with factor {augment_factor}...")
+        
+        augmented_texts = []
+        augmented_labels = []
+        
+        for sample in tqdm(dataset, desc="Augmenting data"):
+            text = sample["text"]
+            label = sample["labels"]
+            
+            # 원본 데이터 포함
+            augmented_texts.append(text)
+            augmented_labels.append(label)
+            
+            # 레이블이 1인 데이터에 대해서만 증강 적용 (PII 데이터)
+            if label == 1:
+                # 데이터 증강 적용
+                augmented = self.augment_sentence(text, augment_factor)
+                augmented_texts.extend(augmented)
+                augmented_labels.extend([label] * len(augmented))
+        
+        augmented_dataset = Dataset.from_dict({
+            "text": augmented_texts,
+            "labels": augmented_labels
+        })
+        
+        print(f"Original dataset size: {len(dataset)}, Augmented dataset size: {len(augmented_dataset)}")
+        return augmented_dataset
+    
     def set_training_args(self):
         dataset_size = len(self.dataset)
-        num_train_epochs = 7 if dataset_size < 1000 else 5 if dataset_size < 5000 else 3
+        num_train_epochs = 5 if dataset_size < 1000 else 5 if dataset_size < 5000 else 3
         
         return TrainingArguments(
             output_dir=os.path.join(self.BASE_DIR, "results"),
@@ -127,6 +190,8 @@ class ModelTrainer:
         return {"accuracy": acc, "precision": prec, "recall": rec, "f1-score": f1}
 
     def train(self):
+        self.dataset = self.augment_dataset(self.dataset, augment_factor = 20)
+        
         self.tokenize_data()
         training_args = self.set_training_args()
         self.train_dataset.set_format(type="torch")
@@ -169,7 +234,6 @@ class ModelTrainer:
                 epoch_loss += loss.item()
             avg_loss = epoch_loss / len(train_dataloader)
             print(f"Epoch {epoch+1} loss: {avg_loss}")
-
 
     def save_model(self):
         os.makedirs(self.MODEL_SAVE_PATH, exist_ok=True)

@@ -2,7 +2,11 @@ import os
 import torch
 import numpy as np
 from transformers import BertTokenizer, BertForSequenceClassification
+from transformers import pipeline
 
+
+
+MODEL_VERSION = "version_0.4"
 class ModelPredictor:
     def __init__(self, company_name=None):
         # BASE_DIR 설정
@@ -12,7 +16,7 @@ class ModelPredictor:
         if company_name:
             self.MODEL_PATH = os.path.join(self.BASE_DIR, 'models', company_name)
         else:
-            self.MODEL_PATH = os.path.join(self.BASE_DIR, 'models', 'basemodel', 'version_0.3')
+            self.MODEL_PATH = os.path.join(self.BASE_DIR, 'models', 'basemodel', MODEL_VERSION)
 
         # 모델 로드
         self.tokenizer = BertTokenizer.from_pretrained(self.MODEL_PATH)
@@ -36,3 +40,14 @@ class ModelPredictor:
             "probabilities": probabilities.numpy(),
             "predicted_class": predicted_class
         }
+
+if __name__ == "__main__":
+    predictor = ModelPredictor()  
+
+    sample_text = "My name is Aaliyah Popova, and I am a jeweler."
+
+    result = predictor.predict(sample_text)
+
+    print("Predicted Class:", result["predicted_class"])
+    print("Probabilities:", result["probabilities"])
+    print("Logits:", result["logits"])

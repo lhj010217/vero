@@ -17,7 +17,7 @@ class InstructionDataProcessor:
         if self.data is None:
             raise ValueError("데이터가 로드되지 않았습니다. 먼저 load_json()을 호출하세요.")
         self.df = pd.DataFrame(
-            [{'instruction': item['instruction'], 'label': 0} for item in self.data]
+            [{'text': item['instruction'], 'labels': 0} for item in self.data]
         )
 
     def save_to_csv(self, output_path: str):
@@ -35,8 +35,10 @@ class InstructionDataProcessor:
     def load_csv(self, csv_path: str):
         """CSV 파일을 로드해서 DataFrame 저장"""
         self.df = pd.read_csv(csv_path, encoding='utf-8-sig')
-        
+
+'''
 processor = InstructionDataProcessor('raw/alpaca_data.json')
 processor.load_json()
 processor.process_data()
 processor.save_to_csv('preprocessed/instructions.csv')
+'''

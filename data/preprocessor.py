@@ -31,11 +31,11 @@ for _, row in df.iterrows():
         labels.append(label)
 
 finetune_df = pd.DataFrame({
-    "sentence": sentences,
-    "label": labels
+    "text": sentences,
+    "labels": labels
 })
 
 finetune_df.to_csv(output_file, index=False)
 
 print("Label Distribution:")
-print(finetune_df['label'].value_counts())
+print(finetune_df['labels'].value_counts())
